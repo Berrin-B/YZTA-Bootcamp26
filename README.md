@@ -18,5 +18,5 @@ ScriptBuddy, tiyatro ve sahne oyuncularının tek başlarına rol provası yapar
 * Senaristler ve oyun yazarları
 
 ## 📊 Proje Yönetimi & Product Backlog
-Proje yönetimi ve sprint takibi GitHub Projects / Trello board üzerinden yürütülmektedir.
-* [Product Backlog ve Sprint Panosu Bağlantısı](BURAYA_LINK_GELECEK)
+Proje yönetimi Miro board üzerinden yürütülmektedir.
+* [Product Backlog Bağlantısı](https://miro.com/app/board/uXjVH5Y_PjI=/?share_link_id=36250160715)
