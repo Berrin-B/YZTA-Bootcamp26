@@ -1,10 +1,12 @@
+import difflib
 import io
+import json
 import re
 import time
-import difflib
 
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # PDF okuma için pypdf kullanımı
 try:
@@ -65,6 +67,146 @@ def normalize_text(text):
     text = re.sub(r"[^\wçğıöşü]+", " ", text, flags=re.IGNORECASE)
     return " ".join(text.split()).strip()
 
+
+def extract_characters(text):
+    if not text:
+        return []
+    matches = re.findall(r"^\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{2,25}):", text, re.MULTILINE)
+    characters = []
+    for item in matches:
+        name = item.strip().title()
+        if name and name not in characters:
+            characters.append(name)
+    return characters
+
+
+def process_script_with_ai(raw_text, api_key):
+    if not raw_text or not api_key:
+        return None
+
+    try:
+        client = genai.Client(api_key=api_key)
+        sample_text = raw_text[:8000]
+
+        prompt = f"""
+        Sen uzman bir tiyatro dramaturgusun.
+        
+        GÖREVLER:
+        1. Oyunun adını tespit et.
+        2. Oyunda geçen GERÇEK tiyatro karakterlerini bul (Yayıncı, editör, basım, önsöz, çevirmen, kaynakça vb. tiyatro dışı terimleri KESİNLİKLE ELE).
+        3. Metnin başındaki ÖNSÖZ, YAYINEVİ, BASIM, İÇİNDEKİLER ve KAPAK BİLGİLERİNİ TEMİZLE. Oyunun/repliklerin başladığı İLK REPLİK veya SAHNE BAŞLIĞINI aynen tespit et.
+        
+        ÇIKTI FORMATI:
+        SADECE aşağıdaki JSON formatında yanıt ver. Başka HİÇBİR açıklama veya markdown ekleme:
+        {{
+            "title": "Oyun Adı",
+            "characters": ["KARAKTER1", "KARAKTER2"],
+            "cleaned_start_text": "Oyunun ilk repliği veya sahne başlığı..."
+        }}
+        
+        METİN:
+        {sample_text}
+        """
+
+        # Gemini 3.x modelleri varsayılan olarak "thinking" (düşünme) kullanır ve bu
+        # tokenlar max_output_tokens bütçesinden düşer. Ayrıca Gemini 3.x ailesinde
+        # zaman zaman görülen bilinen bir davranış olarak, model bazen tamamen boş bir
+        # candidates listesiyle dönebiliyor (ne hata, ne güvenlik engeli - sadece boş).
+        # Bu yüzden: (1) thinking_level="minimal" ile düşünmeyi Google'ın çıkarım/etiketleme
+        # görevleri için önerdiği en düşük seviyeye çekiyoruz, (2) bol max_output_tokens
+        # veriyoruz, (3) boş dönerse birkaç kez otomatik yeniden deniyoruz.
+        # Ayarlanabilir 4 güvenlik kategorisini en gevşek seviyeye çekiyoruz. Not: bu,
+        # "PROHIBITED_CONTENT" block_reason'ını ETKİLEMEZ - o Google'ın sabit, kapatılamayan
+        # çekirdek koruma katmanı. Ama olası SAFETY tabanlı blokajları önlemeye yardımcı olur.
+        safety_settings = [
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+        ]
+
+        generation_config = types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+            max_output_tokens=8192,
+            response_mime_type="application/json",
+            safety_settings=safety_settings,
+        )
+
+        raw_res = ""
+        last_finish_reason = None
+        last_block_reason = None
+        max_attempts = 3
+
+        for attempt in range(max_attempts):
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt,
+                config=generation_config,
+            )
+
+            if hasattr(response, "text") and response.text:
+                raw_res = response.text.strip()
+            elif getattr(response, "candidates", None):
+                candidate = response.candidates[0]
+                if getattr(candidate, "content", None) and getattr(candidate.content, "parts", None):
+                    raw_res = (candidate.content.parts[0].text or "").strip()
+
+            if raw_res:
+                break
+
+            if getattr(response, "candidates", None):
+                last_finish_reason = getattr(response.candidates[0], "finish_reason", None)
+            feedback = getattr(response, "prompt_feedback", None)
+            if feedback is not None:
+                last_block_reason = getattr(feedback, "block_reason", None)
+
+            if attempt < max_attempts - 1:
+                time.sleep(1.5)
+
+        if not raw_res:
+            if last_block_reason:
+                st.error(
+                    f"İstek Google'ın güvenlik filtresine takıldı (block_reason: {last_block_reason}). "
+                    "Bu, ayarlarla kapatılamayan sabit bir koruma katmanı; tiyatro metinlerindeki "
+                    "şiddet/ölüm gibi temalar bazen yanlışlıkla tetikleyebiliyor. Aşağıdaki "
+                    "'AI'sız Devam Et' seçeneğini kullanarak metni AI olmadan da kaydedebilirsin."
+                )
+            elif str(last_finish_reason) in ("MAX_TOKENS", "FinishReason.MAX_TOKENS"):
+                st.error(
+                    "Model 'düşünme' aşamasında token bütçesini tükettiği için gövde metni "
+                    "üretemedi. Lütfen tekrar deneyin."
+                )
+            else:
+                st.error(
+                    f"Model {max_attempts} denemede de boş yanıt döndürdü "
+                    f"(finish_reason: {last_finish_reason}). Bu Gemini tarafında ara sıra "
+                    "görülen geçici bir durum olabilir; lütfen birkaç dakika sonra tekrar deneyin."
+                )
+            return None
+
+        match = re.search(r"\{.*\}", raw_res, re.DOTALL)
+        clean_json_str = match.group(0) if match else raw_res
+
+        data = json.loads(clean_json_str)
+
+        cleaned_start = data.get("cleaned_start_text", "").strip()
+        final_text = raw_text
+        if cleaned_start and len(cleaned_start) > 8:
+            search_anchor = cleaned_start[:20]
+            idx = raw_text.find(search_anchor)
+            if idx != -1:
+                final_text = raw_text[idx:]
+
+        return {
+            "title": data.get("title", "Yeni Oyun"),
+            "characters": data.get("characters", []),
+            "cleaned_text": final_text,
+        }
+
+    except Exception as e:
+        st.error(f"AI Analiz Hatası: {e}")
+        return None
+
 def is_line_correct(expected, answer):
     expected_norm = normalize_text(expected)
     answer_norm = normalize_text(answer)
@@ -72,34 +214,6 @@ def is_line_correct(expected, answer):
         return False, 0.0
     ratio = difflib.SequenceMatcher(None, expected_norm, answer_norm).ratio()
     return ratio >= 0.70, ratio
-
-def extract_characters(text):
-    if not text:
-        return []
-
-    ignore_keywords = {
-        "YAYINLARI", "YAYINEVİ", "YAYINA", "HAZIRLAYAN", "KAPAK", "BASKI", "CİLT",
-        "KAYNAKLAR", "İÇİNDEKİLER", "ÖNSÖZ", "ÇEVİREN", "YAZAR", "SAYFA", "BÖLÜM",
-        "SAHNE", "PERDE", "ISBN", "TELİF", "COPYRIGHT", "CAN", "MİTOS", "BOYUT",
-        "TİYATRO", "EDİTÖR", "DİZGİ", "MATBAA", "ÇEVİRİ", "NOTLAR", "OYUNUN", "TÜRKÇESİ"
-    }
-
-    pattern1 = re.findall(r'^\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{2,20}):', text, re.MULTILINE)
-    pattern2 = re.findall(r'^\s*([A-ZÇĞİÖŞÜ\s]{2,20})\s*$', text, re.MULTILINE)
-    all_matches = pattern1 + pattern2
-
-    cleaned_chars = []
-    for m in all_matches:
-        name = m.strip()
-        words = name.split()
-
-        if 1 <= len(words) <= 3 and not any(char.isdigit() for char in name):
-            if not any(w.upper() in ignore_keywords for w in words):
-                formatted_name = name.title()
-                if formatted_name not in cleaned_chars:
-                    cleaned_chars.append(formatted_name)
-
-    return cleaned_chars
 
 def split_script_lines(script_text):
     lines = []
@@ -130,11 +244,31 @@ def summarize_script(script_text, mode, api_key):
 
     prompt += f"\n\nMETİN:\n{script_text}"
     try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=[{"role": "user", "parts": [{"text": prompt}]}]
+        safety_settings = [
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
+        ]
+        generation_config = types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
+            max_output_tokens=8192,
+            safety_settings=safety_settings,
         )
-        return response.text
+        last_finish_reason = None
+        for attempt in range(3):
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=[{"role": "user", "parts": [{"text": prompt}]}],
+                config=generation_config,
+            )
+            if getattr(response, "text", None):
+                return response.text
+            if getattr(response, "candidates", None):
+                last_finish_reason = getattr(response.candidates[0], "finish_reason", None)
+            if attempt < 2:
+                time.sleep(1.5)
+        return f"Model {3} denemede de boş yanıt döndürdü (finish_reason: {last_finish_reason}). Lütfen tekrar deneyin."
     except Exception as exc:
         return f"Yapay zeka çağrısı sırasında bir hata oluştu: {exc}"
 
@@ -162,7 +296,7 @@ def format_script_preview(script):
     text = script["content"]
     return text if len(text) <= 400 else text[:400].rsplit(" ", 1)[0] + "..."
 
-def save_script_to_library(title, description, content):
+def save_script_to_library(title, description, content, characters=None):
     key_base = get_script_key(title)
     key = key_base
     suffix = 1
@@ -173,6 +307,7 @@ def save_script_to_library(title, description, content):
         "title": title.strip(),
         "description": description.strip(),
         "content": content.strip(),
+        "characters": characters or [],
     }
     return key
 
@@ -205,6 +340,12 @@ initial_session = {
     "last_evaluation": "",
     "last_ratio": 0.0,
     "pending_script_text": "",
+    "script_text": "",
+    "script_title": "",
+    "script_desc": "",
+    "detected_characters": [],
+    "script_characters": [],
+    "ai_processed": False,
     "new_script_title": "",
     "new_script_description": "",
 }
@@ -244,53 +385,155 @@ if st.session_state.current_page == "➕ Yeni Metin Ekle":
             else:
                 if st.session_state.get("pending_script_text", "") != pdf_text:
                     st.session_state.pending_script_text = pdf_text
-                    st.rerun()
-        if st.session_state.get("pending_script_text", ""):
-            st.text_area("PDF içeriği / metin önizlemesi", value=st.session_state.pending_script_text, height=260, disabled=True)
+                    st.session_state["script_text"] = pdf_text
+                    st.session_state["ai_processed"] = False
 
     with tabs[1]:
-        script_input_content = st.text_area(
-            "Metni buraya yapıştır",
-            value=st.session_state.get("pending_script_text", ""),
-            height=340,
-            key="script_editor_input"
+        user_written_text = st.text_area(
+            "Metin İçeriği (Düzenlenebilir):",
+            value=st.session_state.get("script_text", st.session_state.get("pending_script_text", "")),
+            height=250,
+            key="editor_text_area",
+        )
+        if not st.session_state.get("ai_processed"):
+            st.session_state["script_text"] = user_written_text
+
+    current_script_text = st.session_state.get("script_text", "")
+    if not current_script_text:
+        current_script_text = st.session_state.get("pending_script_text", "")
+
+    if current_script_text and not st.session_state.get("ai_processed"):
+        st.markdown("---")
+        st.subheader("📄 Yüklenen Ham Metin Ön İzlemesi")
+        st.text_area(
+            "Ham Metin",
+            value=current_script_text[:1500] + ("..." if len(current_script_text) > 1500 else ""),
+            height=180,
+            disabled=True,
+            key="raw_preview_box",
         )
 
-    st.markdown("---")
-    st.subheader("Metin Bilgileri")
-    st.session_state.new_script_title = st.text_input("Metin Başlığı", value=st.session_state.new_script_title)
-    st.session_state.new_script_description = st.text_area("Açıklama", value=st.session_state.new_script_description, height=100)
+    ai_col, skip_col = st.columns([2, 1])
+    with ai_col:
+        run_ai = st.button(
+            "🤖 Metni Yapay Zeka ile İşle ve Hazırla",
+            key="ai_process_button"
+        )
+    with skip_col:
+        skip_ai = st.button(
+            "✍️ AI'sız Devam Et",
+            key="skip_ai_button",
+            help="Gemini engellenirse/başarısız olursa metni AI olmadan, basit metin analiziyle kaydet.",
+        )
 
-    current_script_text = st.session_state.get("pending_script_text", "")
-    if "script_input_content" in locals():
-        current_script_text = script_input_content
-
-    if current_script_text:
-        characters = extract_characters(current_script_text)
-        if characters:
-            st.success("Algılanan karakterler:")
-            st.write(", ".join(characters))
+    if run_ai:
+        if not api_key:
+            st.warning("⚠️ Lütfen sol menüden Google Gemini API anahtarınızı girin!")
         else:
-            st.warning("Karakterler otomatik tespit ediliyor (İki noktalı veya satır başı BÜYÜK HARF formatları desteklenmektedir).")
+            with st.spinner(
+                "🤖 Gemini metni analiz ediyor ve önsözleri temizliyor..."
+            ):
+                data = process_script_with_ai(current_script_text, api_key)
+                if not data:
+                    st.error("⚠️ AI’den geçerli bir yanıt alınamadı. Yukarıdaki hata mesajına bakabilir ya da 'AI'sız Devam Et' ile ilerleyebilirsin.")
+                else:
+                    cleaned_text = current_script_text
+                    cleaned_start = data.get("cleaned_text", "").strip()
 
-    if st.button("Kütüphaneye Kaydet"):
-        if not st.session_state.new_script_title.strip():
-            st.error("Lütfen önce bir başlık girin.")
-        elif not current_script_text.strip():
-            st.error("Metin içeriği boş olamaz.")
+                    if cleaned_start and len(cleaned_start) > 10:
+                        search_anchor = cleaned_start[:20]
+                        idx = current_script_text.find(search_anchor)
+                        if idx != -1:
+                            cleaned_text = current_script_text[idx:]
+
+                    st.session_state["script_text"] = cleaned_text
+                    st.session_state["detected_characters"] = data.get("characters", [])
+                    st.session_state["script_title"] = data.get("title", "Yeni Oyun")
+                    st.session_state.new_script_title = data.get("title", "Yeni Oyun")
+                    st.session_state["ai_processed"] = True
+                    st.success(
+                        "✅ Metin önsözlerden temizlendi ve karakterler tespit edildi!"
+                    )
+                    st.rerun()
+
+    if skip_ai:
+        if not current_script_text.strip():
+            st.warning("⚠️ Önce bir metin girin ya da PDF yükleyin.")
         else:
-            saved_key = save_script_to_library(
-                st.session_state.new_script_title,
-                st.session_state.new_script_description,
-                current_script_text,
+            # AI çağrısı olmadan, mevcut basit regex tabanlı karakter tespitini kullan.
+            # Metin önsöz/kapak temizliği yapılmaz; kullanıcı aşağıdaki metin kutusundan
+            # elle düzenleyebilir.
+            st.session_state["script_text"] = current_script_text
+            st.session_state["detected_characters"] = extract_characters(current_script_text)
+            st.session_state["script_title"] = "Yeni Oyun"
+            st.session_state.new_script_title = "Yeni Oyun"
+            st.session_state["ai_processed"] = True
+            st.info(
+                "AI adımı atlandı. Karakterler basit metin analiziyle tespit edildi; "
+                "başlığı, açıklamayı ve metni aşağıda elle düzenleyip kaydedebilirsin."
             )
-            st.success(f"'{st.session_state.new_script_title}' kütüphaneye kaydedildi.")
-            st.session_state.active_script = saved_key
-            st.session_state.pending_script_text = ""
-            st.session_state.new_script_title = ""
-            st.session_state.new_script_description = ""
-            st.session_state.current_page = "Prova & Ayarlar"
             st.rerun()
+
+    if st.session_state.get("ai_processed"):
+        st.markdown("---")
+        st.success("🎉 Yapay Zeka Analizi Tamamlandı! Aşağıdaki bilgileri kontrol edip kütüphanenize kaydedebilirsiniz.")
+
+        st.subheader("📝 Metin Bilgileri")
+        st.session_state.new_script_title = st.text_input(
+            "Metin Başlığı",
+            value=st.session_state.get("script_title", "Yeni Oyun"),
+        )
+        st.session_state["script_title"] = st.session_state.new_script_title
+        st.session_state.new_script_description = st.text_area(
+            "Açıklama / Notlar",
+            value=st.session_state.get("new_script_description", ""),
+            height=80,
+        )
+        st.session_state["script_desc"] = st.session_state.new_script_description
+
+        st.subheader("🎭 AI Tarafından Tespit Edilen Karakterler")
+        chars = st.session_state.get("detected_characters", [])
+        if chars:
+            chips = [
+                f"<span style='display:inline-block;padding:0.3rem 0.8rem;margin:0.2rem;border-radius:20px;background:#E8F0FE;color:#1A73E8;font-weight:bold;'>🎭 {char}</span>"
+                for char in chars
+            ]
+            st.markdown(" ".join(chips), unsafe_allow_html=True)
+        else:
+            st.info("Karakter bulunamadı.")
+
+        st.subheader("📄 Hazırlanan Metin Ön İzlemesi")
+        st.text_area(
+            "İşlenmiş Metin",
+            value=st.session_state.get("script_text", ""),
+            height=250,
+            disabled=True,
+            key="final_ai_preview_box",
+        )
+
+        if st.button("💾 Kütüphaneye Kaydet", key="save_script_final_btn"):
+            title_to_save = st.session_state.get("new_script_title", "Adsız Oyun")
+            desc_to_save = st.session_state.get("new_script_description", "")
+            text_to_save = st.session_state.get("script_text", "")
+            characters_to_save = st.session_state.get("detected_characters", [])
+
+            if not text_to_save.strip():
+                st.error("Metin içeriği boş olamaz.")
+            else:
+                saved_key = save_script_to_library(
+                    title_to_save,
+                    desc_to_save,
+                    text_to_save,
+                    characters=characters_to_save,
+                )
+                st.success("🎉 Metin başarıyla kütüphanenize kaydedildi!")
+                st.session_state.active_script = saved_key
+                st.session_state.pending_script_text = ""
+                st.session_state["script_text"] = ""
+                st.session_state["detected_characters"] = []
+                st.session_state["ai_processed"] = False
+                st.session_state.current_page = "Prova & Ayarlar"
+                st.rerun()
 
 elif st.session_state.current_page == "📚 Kütüphanem":
     st.header("📚 Kütüphanem")
@@ -379,7 +622,12 @@ elif st.session_state.current_page == "Prova & Ayarlar":
             st.rerun()
         if nav_cols[2].button("Metni Kaydet / Kopyala"):
             if active_key.startswith("builtin:"):
-                saved_key = save_script_to_library(selected_script["title"], selected_script["description"], selected_script["content"])
+                saved_key = save_script_to_library(
+                    selected_script["title"],
+                    selected_script["description"],
+                    selected_script["content"],
+                    characters=selected_script.get("characters", []),
+                )
                 st.success("Metin kütüphaneye kopyalandı.")
                 st.session_state.active_script = saved_key
                 st.rerun()
@@ -403,6 +651,7 @@ elif st.session_state.current_page == "Prova & Ayarlar":
                     "title": edited_title.strip(),
                     "description": edited_description.strip(),
                     "content": edited_content.strip(),
+                    "characters": selected_script.get("characters", []),
                 }
                 st.success("Metin kaydedildi.")
                 st.rerun()
@@ -431,7 +680,7 @@ elif st.session_state.current_page == "Prova & Ayarlar":
         show_hints = st.checkbox("İpucu almak istiyorum", value=True, key="show_hints")
 
         lines = split_script_lines(edited_content)
-        characters = extract_characters(edited_content)
+        characters = selected_script.get("characters") or extract_characters(edited_content)
         if not lines:
             st.warning("Seçili metinde satır formatı bulunamadı. Lütfen KARAKTER: replik formatında metin girin.")
         elif not characters:
