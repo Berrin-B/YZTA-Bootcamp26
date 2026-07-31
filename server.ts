@@ -14,11 +14,6 @@ app.use(express.json({ limit: "10mb" }));
 // Initialize Gemini AI SDK (Server-Side Only)
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
 });
 
 // API Route: Script & Character Analysis using Gemini AI
