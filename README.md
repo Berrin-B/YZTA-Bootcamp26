@@ -1,7 +1,7 @@
-# 🎭 ToBe - Akıllı Tiyatro & Senaryo Prova Asistanı
+# 🎭 Aklımda - Akıllı Tiyatro & Senaryo Prova Asistanı
 
 ## 📌 Proje Hakkında
-ToBe, tiyatro ve sahne oyuncularının tek başlarına rol provası yaparken yaşadığı "karşılıklı replik okuma" problemini çözen yapay zeka destekli bir prova asistanıdır. Kullanıcı tiyatro metnini sisteme yükler, kendi oynayacağı karakteri seçer ve uygulama senaryo akışını takip ederek diğer karakterlerin repliklerini sırayla ekrana getirir. Oyuncunun sırası geldiğinde repliği gizleyerek hafıza ve ipucu mekanizmasıyla etkileşimli bir prova deneyimi sunar.
+Aklımda, tiyatro ve sahne oyuncularının tek başlarına rol provası yaparken yaşadığı "karşılıklı replik okuma" problemini çözen yapay zeka destekli bir prova asistanıdır. Kullanıcı tiyatro metnini sisteme yükler, kendi oynayacağı karakteri seçer ve uygulama senaryo akışını takip ederek diğer karakterlerin repliklerini sırayla ekrana getirir. Oyuncunun sırası geldiğinde repliği gizleyerek hafıza ve ipucu mekanizmasıyla etkileşimli bir prova deneyimi sunar.
 
 ## 👥 Takım Bilgileri (Bireysel Proje)
 * **Berrin Bilgin:** Product Owner / Scrum Master / Developer 
