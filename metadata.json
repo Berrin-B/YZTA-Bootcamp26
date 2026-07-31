@@ -1,0 +1,6 @@
+{
+  "name": "Aklımda - Tiyatro Replik & Prova Asistanı",
+  "description": "Aklımda: Tiyatro ve dizi oyuncuları için akıllı replik çalışma, PDF metni temizleme, sesli prova ve detaylı karakter & metin analizi uygulaması.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
