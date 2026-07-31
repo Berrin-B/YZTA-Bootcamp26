@@ -24,7 +24,7 @@ Bir sahnede duygu geçişi, zamanlama (pacing), tonlama ve partnerin ses tonuna 
 ## 2. Çözümümüz
 
 ### 🚀 Ürün Ne Yapıyor?
-**SahneArkası AI**, yüklenen herhangi bir oyun metnini veya senaryoyu (PDF, TXT, DOCX) saniyeler içinde analiz eder; karakterleri, sahne yönnergelerini (jest, mimik, duygu) ve replikleri ayıklar. Oyuncu kendi rolünü seçer; geriye kalan tüm partner karakterleri ise **Google Gemini AI'ın insansı nöral ses teknolojisi** canlandırır.
+**Aklımda AI**, yüklenen herhangi bir oyun metnini veya senaryoyu (PDF, TXT, DOCX) saniyeler içinde analiz eder; karakterleri, sahne yönnergelerini (jest, mimik, duygu) ve replikleri ayıklar. Oyuncu kendi rolünü seçer; geriye kalan tüm partner karakterleri ise **Google Gemini AI'ın insansı nöral ses teknolojisi** canlandırır.
 
 ### ✨ Kullanıcı Neden Bu Ürünü Tercih Etmeli?
 1. **İnsansı ve Tiyatral Sesler:** Monoton sesler yerine sahnedeki duyguya, karakterin cinsiyetine ve mizacına uygun insansı Gemini AI sesleri (Kore, Fenrir, Charon, Puck, Zephyr) kullanılır.
