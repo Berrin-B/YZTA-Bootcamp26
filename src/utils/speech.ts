@@ -174,7 +174,6 @@ export function normalizeTurkishTheatricalText(text: string): string {
     .replace(/\bdr\./gi, 'doktor')
     .replace(/\bprof\./gi, 'profesör')
     .replace(/\bav\./gi, 'avukat')
-    .replace(/\bhz\./gi, 'hazreti')
     .replace(/\bvb\./gi, 've benzerleri')
     .replace(/\bvs\./gi, 've saire')
     .replace(/\bör\./gi, 'örneğin')
@@ -207,15 +206,10 @@ export function inferCharacterGender(characterName: string): 'female' | 'male' |
 
   // Female Indicators
   const femaleTokens = [
-    'POPOVA', 'YELENA', 'ANNA', 'MERYEM', 'AYŞE', 'AYSE', 'FATMA', 'ZEYNEP', 'ELİF', 'ELIF',
-    'LEYLA', 'MERVE', 'KADIN', 'KIZ', 'ANNE', 'TEYZE', 'HANIM', 'PRENSES', 'KRALİÇE', 'KRALICE',
-    'NİNA', 'NINA', 'MAŞA', 'MASA', 'İRİNA', 'IRINA', 'ARKADİNA', 'DESDEMONA', 'JULIET', 'OPHELIA',
-    'MEDEA', 'VARYA', 'LUBOW', 'SONYA', 'LİZ', 'LIZ', 'SELİN', 'SELIN', 'EBRU', 'BURCU', 'ASLI',
-    'DENİZ', 'DENIZ', 'NUR', 'SİBEL', 'SIBEL', 'DUYGU', 'CANAN', 'HALE', 'LALE', 'EDA', 'SEDA',
-    'GÜL', 'GUL', 'FİLİZ', 'FILIZ', 'GAMZE', 'HANDAN', 'DİLEK', 'DILEK', 'EZGİ', 'EZGI', 'GÖKÇE',
-    'GOKCE', 'SİMGE', 'SIMGE', 'BÜŞRA', 'BUSRA', 'DAMLA', 'PELİN', 'PELIN', 'TÜLAY', 'TULAY',
-    'GÜLAY', 'GULAY', 'EMİNE', 'EMINE', 'MİNE', 'MINE', 'NATASHA', 'ELENA', 'SONIA', 'MARY',
-    'MARIA', 'CATHERINE', 'MARGARET', 'ALICE', 'CLEOPATRA', 'LADY', 'MRS', 'MISS'
+    'POPOVA', 'YELENA', 'ANNA','LEYLA', 'MERVE', 'KADIN', 'KIZ', 'ANNE', 'TEYZE', 'HANIM', 
+    'PRENSES', 'KRALİÇE', 'KRALICE','NİNA', 'NINA', 'MAŞA', 'MASA', 'İRİNA', 'IRINA', 'ARKADİNA', 
+    'DESDEMONA', 'JULIET', 'OPHELIA', 'MEDEA', 'VARYA', 'LUBOW', 'SONYA', 'LİZ', 'LIZ', 'NATASHA', 
+    'ELENA', 'SONIA', 'MARY', 'MARIA', 'CATHERINE', 'MARGARET', 'ALICE', 'CLEOPATRA', 'LADY', 'MRS', 'MISS'
   ];
 
   for (const token of femaleTokens) {
@@ -226,12 +220,7 @@ export function inferCharacterGender(characterName: string): 'female' | 'male' |
   const maleTokens = [
     'SMİRNOV', 'SMIRNOV', 'LUKA', 'LOPAKHIN', 'TREPLEV', 'TRIGORIN', 'ASTROV', 'VOYNITSKY',
     'HAMLET', 'OTHELLO', 'MACBETH', 'ROMEO', 'BABA', 'DEDE', 'AMCA', 'ERKEK', 'ADAM', 'BEY',
-    'BAY', 'KRAL', 'PRENS', 'AHMET', 'MEHMET', 'ALİ', 'ALI', 'MUSTAFA', 'BURAK', 'CAN',
-    'MURAT', 'EMRE', 'ONUR', 'SERKAN', 'TOLGA', 'HAKAN', 'CEM', 'KANUT', 'YAŞAR', 'YASAR',
-    'KEMAL', 'ORHAN', 'OĞUZ', 'OGUZ', 'METİN', 'METIN', 'LEVENT', 'KORAY', 'ENVER', 'HÜSEYİN',
-    'HUSEYIN', 'OSMAN', 'İBRAHİM', 'IBRAHIM', 'SELİM', 'SELIM', 'SÜLEYMAN', 'SULEYMAN', 'SİNAN',
-    'SINAN', 'TARIK', 'UFUK', 'ERDEM', 'KAZIM', 'SERDAR', 'VOLKAN', 'BERK', 'BARAN', 'CEMAL',
-    'ENES', 'IVAN', 'GRIGORY', 'STEPAN', 'NICOLAI', 'ALEXANDER', 'BORIS', 'MIKHAIL', 'PETER',
+    'BAY', 'KRAL', 'PRENS', 'IVAN', 'GRIGORY', 'STEPAN', 'NICOLAI', 'ALEXANDER', 'BORIS', 'MIKHAIL', 'PETER',
     'JOHN', 'GEORGE', 'CHARLES', 'DAVID', 'MICHAEL', 'RICHARD', 'THOMAS', 'SIR', 'LORD', 'MR'
   ];
 
