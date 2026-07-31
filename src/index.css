@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Vintage Theatre Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #111215;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4A1D24;
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #7F232E;
+  }
+
+  /* Subtly Muted Vintage Stage Cards */
+  .bg-stage-dark {
+    background-color: #111215;
+  }
+  .bg-velvet-card {
+    background: #18191E;
+  }
+  .border-velvet {
+    border-color: rgba(139, 43, 56, 0.3);
+  }
+  .border-spotlight {
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+  .shadow-spotlight {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  .shadow-velvet {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
