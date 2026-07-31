@@ -35,7 +35,7 @@ Bir sahnede duygu geçişi, zamanlama (pacing), tonlama ve partnerin ses tonuna 
 
 ---
 
-## 3. Kullanıcı Deneyimini Gösterin (İş Akışı ve Kullanım)
+## 3. Kullanıcı Deneyimi (İş Akışı ve Kullanım)
 
 Bir kullanıcının Aklımda AI platformundaki adım adım prova deneyimi:
 
