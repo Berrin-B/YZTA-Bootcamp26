@@ -93,12 +93,17 @@ Bir kullanıcının Aklımda AI platformundaki adım adım prova deneyimi:
 
 ---
 - **Ekran Görüntüleri:**
-<img width="1343" height="627" alt="Ekran Görüntüsü (1139)" src="https://github.com/user-attachments/assets/b33e7702-8b1c-4fe6-8035-0ba3f0517f82" />
 <img width="1343" height="625" alt="Ekran Görüntüsü (1138)" src="https://github.com/user-attachments/assets/c2eb1eb4-f341-47ee-86b4-b5c6b0f372fd" />
 <img width="1329" height="625" alt="Ekran Görüntüsü (1136)" src="https://github.com/user-attachments/assets/4bcf2084-1a7c-4edb-aaac-e97dcc64868d" />
 <img width="1347" height="621" alt="Ekran Görüntüsü (1135)" src="https://github.com/user-attachments/assets/4d4b7148-56b9-4591-8243-0c412b7ee5bb" />
 <img width="1345" height="624" alt="Ekran Görüntüsü (1134)" src="https://github.com/user-attachments/assets/b469b79e-ce07-4693-80ea-6c53ec5f5200" />
 <img width="1348" height="629" alt="Ekran Görüntüsü (1133)" src="https://github.com/user-attachments/assets/e21583f8-7e13-4649-bc4e-6d1f90a95471" />
+<img width="1343" height="627" alt="Ekran Görüntüsü (1139)" src="https://github.com/user-attachments/assets/b33e7702-8b1c-4fe6-8035-0ba3f0517f82" />
+
+
+
+
+
 
 
 Aklımda AI ile sahneye her zaman hazır olun! 🎭✨
